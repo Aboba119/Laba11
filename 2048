@@ -1,0 +1,233 @@
+import pygame
+import random
+import sys
+import numpy as np
+
+pygame.init()
+
+WIDTH, HEIGHT = 500, 600
+GRID_SIZE = 4
+CELL_SIZE = 100
+GRID_PADDING = 10
+GRID_WIDTH = GRID_SIZE * CELL_SIZE + (GRID_SIZE + 1) * GRID_PADDING
+GRID_HEIGHT = GRID_SIZE * CELL_SIZE + (GRID_SIZE + 1) * GRID_PADDING
+GRID_LEFT = (WIDTH - GRID_WIDTH) // 2
+GRID_TOP = (HEIGHT - GRID_HEIGHT) // 2 + 50
+
+# Цвета
+BACKGROUND_COLOR = (250, 248, 239)
+GRID_COLOR = (187, 173, 160)
+EMPTY_CELL_COLOR = (205, 193, 180)
+TEXT_COLOR = (119, 110, 101)
+TEXT_COLOR_LIGHT = (249, 246, 242)
+COLORS = {
+    0: EMPTY_CELL_COLOR,
+    2: (238, 228, 218),
+    4: (237, 224, 200),
+    8: (242, 177, 121),
+    16: (245, 149, 99),
+    32: (246, 124, 95),
+    64: (246, 94, 59),
+    128: (237, 207, 114),
+    256: (237, 204, 97),
+    512: (237, 200, 80),
+    1024: (237, 197, 63),
+    2048: (237, 194, 46),
+}
+
+# Создание окна
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("2048")
+font = pygame.font.SysFont("Arial", 36, bold=True)
+small_font = pygame.font.SysFont("Arial", 24)
+title_font = pygame.font.SysFont("Arial", 48, bold=True)
+
+
+class Game2048:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=int)
+        self.score = 0
+        self.game_over = False
+        self.win = False
+        self.add_new_tile()
+        self.add_new_tile()
+        self.waiting_for_start = True
+
+    def add_new_tile(self):
+        empty_cells = [(i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE) if self.grid[i][j] == 0]
+        if empty_cells:
+            i, j = random.choice(empty_cells)
+            self.grid[i][j] = 2 if random.random() < 0.9 else 4
+
+    def move(self, direction):
+        # 0: up, 1: right, 2: down, 3: left
+        moved = False
+        grid_copy = self.grid.copy()
+
+        if direction == 0:  # up
+            for j in range(GRID_SIZE):
+                column = self.grid[:, j]
+                new_column, score = self.slide_and_merge(column)
+                self.grid[:, j] = new_column
+                self.score += score
+        elif direction == 1:  # right
+            for i in range(GRID_SIZE):
+                row = self.grid[i, :][::-1]
+                new_row, score = self.slide_and_merge(row)
+                self.grid[i, :] = new_row[::-1]
+                self.score += score
+        elif direction == 2:  # down
+            for j in range(GRID_SIZE):
+                column = self.grid[:, j][::-1]
+                new_column, score = self.slide_and_merge(column)
+                self.grid[:, j] = new_column[::-1]
+                self.score += score
+        elif direction == 3:  # left
+            for i in range(GRID_SIZE):
+                row = self.grid[i, :]
+                new_row, score = self.slide_and_merge(row)
+                self.grid[i, :] = new_row
+                self.score += score
+
+        if not np.array_equal(grid_copy, self.grid):
+            self.add_new_tile()
+            moved = True
+
+        self.check_game_over()
+        return moved
+
+    def slide_and_merge(self, line):
+        # Удаляем нули
+        non_zero = line[line != 0]
+        merged = []
+        score = 0
+        i = 0
+
+        while i < len(non_zero):
+            if i + 1 < len(non_zero) and non_zero[i] == non_zero[i + 1]:
+                merged_value = non_zero[i] * 2
+                merged.append(merged_value)
+                score += merged_value
+                i += 2
+            else:
+                merged.append(non_zero[i])
+                i += 1
+
+        # Заполняем оставшиеся позиции нулями
+        merged += [0] * (len(line) - len(merged))
+        return np.array(merged), score
+
+    def check_game_over(self):
+        # Проверка на победу
+        if 2048 in self.grid:
+            self.win = True
+            self.game_over = True
+            return
+
+        # Проверка на поражение (нет пустых клеток и нет возможных слияний)
+        if 0 not in self.grid:
+            # Проверяем возможные слияния по горизонтали и вертикали
+            for i in range(GRID_SIZE):
+                for j in range(GRID_SIZE - 1):
+                    if self.grid[i][j] == self.grid[i][j + 1]:
+                        return
+
+            for j in range(GRID_SIZE):
+                for i in range(GRID_SIZE - 1):
+                    if self.grid[i][j] == self.grid[i + 1][j]:
+                        return
+
+            self.game_over = True
+
+    def draw(self):
+        # Фон
+        screen.fill(BACKGROUND_COLOR)
+
+        # Заголовок
+        title = title_font.render("2048", True, (119, 110, 101))
+        screen.blit(title, (GRID_LEFT, 20))
+
+        # Счет
+        score_text = small_font.render(f"Score: {self.score}", True, TEXT_COLOR)
+        screen.blit(score_text, (GRID_LEFT, 80))
+
+        # Игровое поле
+        pygame.draw.rect(screen, GRID_COLOR, (GRID_LEFT, GRID_TOP, GRID_WIDTH, GRID_HEIGHT), border_radius=10)
+
+        # Клетки
+        for i in range(GRID_SIZE):
+            for j in range(GRID_SIZE):
+                value = self.grid[i][j]
+                cell_rect = pygame.Rect(
+                    GRID_LEFT + GRID_PADDING + j * (CELL_SIZE + GRID_PADDING),
+                    GRID_TOP + GRID_PADDING + i * (CELL_SIZE + GRID_PADDING),
+                    CELL_SIZE,
+                    CELL_SIZE
+                )
+                pygame.draw.rect(screen, COLORS.get(value, COLORS[0]), cell_rect, border_radius=5)
+
+                if value != 0:
+                    text_color = TEXT_COLOR if value < 8 else TEXT_COLOR_LIGHT
+                    text = font.render(str(value), True, text_color)
+                    text_rect = text.get_rect(center=cell_rect.center)
+                    screen.blit(text, text_rect)
+
+        # Сообщения
+        if self.waiting_for_start:
+            self.draw_message("Нажмите ENTER для старта", "Используйте WASD для передвижения фишек")
+        elif self.win:
+            self.draw_message("You Win! Press R to restart", f"Final Score: {self.score}")
+        elif self.game_over:
+            self.draw_message("Game Over! Press R to restart", f"Final Score: {self.score}")
+
+    def draw_message(self, main_text, sub_text):
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((238, 228, 218, 200))
+        screen.blit(overlay, (0, 0))
+
+        main = small_font.render(main_text, True, TEXT_COLOR)
+        sub = small_font.render(sub_text, True, TEXT_COLOR)
+
+        screen.blit(main, (WIDTH // 2 - main.get_width() // 2, HEIGHT // 2 - 50))
+        screen.blit(sub, (WIDTH // 2 - sub.get_width() // 2, HEIGHT // 2 + 20))
+
+
+def main():
+    game = Game2048()
+    clock = pygame.time.Clock()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                if game.waiting_for_start:
+                    if event.key == pygame.K_RETURN:
+                        game.waiting_for_start = False
+                elif game.game_over:
+                    if event.key == pygame.K_r:
+                        game.reset()
+                else:
+                    if event.key == pygame.K_w:
+                        game.move(0)  # вверх
+                    elif event.key == pygame.K_d:
+                        game.move(1)  # вправо
+                    elif event.key == pygame.K_s:
+                        game.move(2)  # вниз
+                    elif event.key == pygame.K_a:
+                        game.move(3)  # влево
+                    elif event.key == pygame.K_r:
+                        game.reset()
+
+        game.draw()
+        pygame.display.flip()
+        clock.tick(60)
+
+
+if __name__ == "__main__":
+    main()
