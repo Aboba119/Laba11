@@ -179,9 +179,9 @@ class Game2048:
         if self.waiting_for_start:
             self.draw_message("Нажмите ENTER для старта", "Используйте WASD для передвижения фишек")
         elif self.win:
-            self.draw_message("You Win! Press R to restart", f"Final Score: {self.score}")
+            self.draw_message("Победа! Нажмите R для рестарта", f"Результат: {self.score}")
         elif self.game_over:
-            self.draw_message("Game Over! Press R to restart", f"Final Score: {self.score}")
+            self.draw_message("Поражение! Нажмите R для рестарта", f"Результат: {self.score}")
 
     def draw_message(self, main_text, sub_text):
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
