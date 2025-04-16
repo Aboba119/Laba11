@@ -63,29 +63,29 @@ class Game2048:
             self.grid[i][j] = 2 if random.random() < 0.9 else 4
 
     def move(self, direction):
-        # 0: up, 1: right, 2: down, 3: left
+        # 0: вверх, 1: вправо, 2: низ, 3: влево
         moved = False
         grid_copy = self.grid.copy()
 
-        if direction == 0:  # up
+        if direction == 0:  # вверх
             for j in range(GRID_SIZE):
                 column = self.grid[:, j]
                 new_column, score = self.slide_and_merge(column)
                 self.grid[:, j] = new_column
                 self.score += score
-        elif direction == 1:  # right
+        elif direction == 1:  # вправо
             for i in range(GRID_SIZE):
                 row = self.grid[i, :][::-1]
                 new_row, score = self.slide_and_merge(row)
                 self.grid[i, :] = new_row[::-1]
                 self.score += score
-        elif direction == 2:  # down
+        elif direction == 2:  # вниз
             for j in range(GRID_SIZE):
                 column = self.grid[:, j][::-1]
                 new_column, score = self.slide_and_merge(column)
                 self.grid[:, j] = new_column[::-1]
                 self.score += score
-        elif direction == 3:  # left
+        elif direction == 3:  # влево
             for i in range(GRID_SIZE):
                 row = self.grid[i, :]
                 new_row, score = self.slide_and_merge(row)
